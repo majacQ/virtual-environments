@@ -5,7 +5,7 @@ Describe "Visual Studio" {
         }
 
         It "Devenv.exe" {
-            $vsInstallRoot = Get-VisualStudioPath
+            $vsInstallRoot = (Get-VisualStudioInstance).InstallationPath
             $devenvexePath = "${vsInstallRoot}\Common7\IDE\devenv.exe"
             $devenvexePath | Should -Exist
         }
@@ -21,5 +21,11 @@ Describe "Visual Studio" {
         It "<ComponentName>" -TestCases $testCases {
             $installedComponents | Should -Contain $ComponentName
         }
+    }
+}
+
+Describe "Windows 10 SDK" {
+    It "Verifies 17763 SDK is installed" -Skip:((Test-IsWin16) -or (Test-IsWin19)) {
+        "${env:ProgramFiles(x86)}\Windows Kits\10\DesignTime\CommonConfiguration\Neutral\UAP\10.0.17763.0\UAP.props" | Should -Exist
     }
 }

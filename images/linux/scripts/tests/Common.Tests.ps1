@@ -39,7 +39,7 @@ Describe "Swift" {
     }
 }
 
-Describe "PipxPackages" -Skip:(Test-IsUbuntu16) {
+Describe "PipxPackages" {
     [array]$testCases = (Get-ToolsetContent).pipx | ForEach-Object { @{package=$_.package; cmd = $_.cmd} }
 
     It "<package>" -TestCases $testCases {

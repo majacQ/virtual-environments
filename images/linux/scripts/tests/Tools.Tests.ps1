@@ -8,7 +8,20 @@ Describe "azcopy" {
     }
 }
 
+Describe "Bicep" {
+    It "Bicep" {
+        "bicep --version" | Should -ReturnZeroExitCode
+    }
+}
+
 Describe "Rust" {
+    BeforeAll {
+        $env:PATH = "/etc/skel/.cargo/bin:/etc/skel/.rustup/bin:$($env:PATH)"
+        $env:RUSTUP_HOME = "/etc/skel/.rustup"
+        $env:CARGO_HOME = "/etc/skel/.cargo"
+    }
+    
+   
     It "Rustup is installed" {
         "rustup --version" | Should -ReturnZeroExitCode
     }
@@ -60,6 +73,10 @@ Describe "Docker" {
         "docker buildx" | Should -ReturnZeroExitCode
     }
 
+    It "docker compose v2" {
+        "docker compose" | Should -ReturnZeroExitCode
+    }
+
     Context "docker images" {
         $testCases = (Get-ToolsetContent).docker.images | ForEach-Object { @{ ImageName = $_ } }
 
@@ -69,7 +86,7 @@ Describe "Docker" {
     }
 }
 
-Describe "Docker-compose" {
+Describe "Docker-compose v1" {
     It "docker-compose" {
         "docker-compose --version"| Should -ReturnZeroExitCode
     }
@@ -165,6 +182,12 @@ Describe "MSSQLCommandLineTools" {
     }
 }
 
+Describe "SqlPackage" {
+    It "sqlpackage" {
+        "sqlpackage /version" | Should -ReturnZeroExitCode
+    }
+}
+
 Describe "R" {
     It "r" {
         "R --version" | Should -ReturnZeroExitCode
@@ -178,8 +201,10 @@ Describe "Sbt" {
 }
 
 Describe "Selenium" {
-    It "Selenium Server 'selenium-server-standalone.jar' is installed" {
-        "/usr/share/java/selenium-server-standalone.jar" | Should -Exist
+    It "Selenium is installed" {
+        $seleniumBinaryName = (Get-ToolsetContent).selenium.binary_name
+        $seleniumPath = Join-Path "/usr/share/java" "$seleniumBinaryName.jar"
+        $seleniumPath | Should -Exist
     }
 }
 
@@ -273,12 +298,6 @@ Describe "Leiningen" {
     }
 }
 
-Describe "Mercurial" {
-    It "mercurial" {
-        "hg --version" | Should -ReturnZeroExitCode
-    }
-}
-
 Describe "Conda" {
     It "conda" {
         "conda --version" | Should -ReturnZeroExitCode
@@ -313,7 +332,7 @@ Describe "GraalVM" -Skip:(-not (Test-IsUbuntu20)) {
     }
 }
 
-Describe "Containers" -Skip:(Test-IsUbuntu16) {
+Describe "Containers" {
     $testCases = @("podman", "buildah", "skopeo") | ForEach-Object { @{ContainerCommand = $_} }
 
     It "<ContainerCommand>" -TestCases $testCases {
@@ -363,5 +382,37 @@ Describe "Ruby" {
         It "Gem <gemName> is installed" -TestCases $gemTestCases {
             "gem list -i '^$gemName$'" | Should -MatchCommandOutput "true"
         }
+    }
+}
+
+Describe "yq" {
+    It "yq" {
+        "yq -V" | Should -ReturnZeroExitCode
+    }
+}
+
+Describe "Kotlin" {
+    It "kapt" {
+        "kapt -version"| Should -ReturnZeroExitCode
+    }
+
+    It "kotlin" {
+        "kotlin -version"| Should -ReturnZeroExitCode
+    }
+
+    It "kotlinc" {
+        "kotlinc -version"| Should -ReturnZeroExitCode
+    }
+
+    It "kotlinc-js" {
+        "kotlinc-js -version"| Should -ReturnZeroExitCode
+    }
+
+    It "kotlinc-jvm" {
+        "kotlinc-jvm -version"| Should -ReturnZeroExitCode
+    }
+
+    It "kotlin-dce-js" {
+        "kotlin-dce-js -version"| Should -ReturnZeroExitCode
     }
 }

@@ -14,6 +14,11 @@ Describe "Apt" {
             $toolName = "getfacl"
         }
 
+        if ($toolName -eq "aria2")
+        {
+            $toolName = "aria2c"
+        }
+
         if ($toolName -eq "p7zip-full")
         {
             $toolName = "p7zip"
@@ -42,6 +47,11 @@ Describe "Apt" {
         if ($toolName -eq "net-tools")
         {
             $toolName = "netstat"
+        }
+
+        if ($toolName -eq "mercurial")
+        {
+            $toolName = "hg"
         }
 
         (Get-Command -Name $toolName).CommandType | Should -BeExactly "Application"

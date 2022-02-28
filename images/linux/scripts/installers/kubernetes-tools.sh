@@ -4,14 +4,17 @@
 ##  Desc:  Installs kubectl, helm, kustomize
 ################################################################################
 
+# Source the helpers for use with the script
+source $HELPER_SCRIPTS/install.sh
+
 # Install KIND
-URL=$(curl -s https://api.github.com/repos/kubernetes-sigs/kind/releases/latest | jq -r '.assets[].browser_download_url | select(contains("kind-linux-amd64"))')
+URL=$(get_github_package_download_url "kubernetes-sigs/kind" "contains(\"kind-linux-amd64\")")
 curl -L -o /usr/local/bin/kind $URL
 chmod +x /usr/local/bin/kind
 
 ## Install kubectl
-KUBECTL_VERSION=$(curl -s https://storage.googleapis.com/kubernetes-release/release/stable.txt)
-curl -o /usr/local/bin/kubectl -LO https://storage.googleapis.com/kubernetes-release/release/$KUBECTL_VERSION/bin/linux/amd64/kubectl
+KUBECTL_VERSION=$(curl -L -s "https://dl.k8s.io/release/stable.txt")
+curl -o /usr/local/bin/kubectl -LO "https://dl.k8s.io/release/$KUBECTL_VERSION/bin/linux/amd64/kubectl"
 chmod +x /usr/local/bin/kubectl
 
 # Install Helm

@@ -1,3 +1,9 @@
+function Initialize-RustEnvironment {
+    $env:RUSTUP_HOME = "C:\Users\Default\.rustup"
+    $env:CARGO_HOME = "C:\Users\Default\.cargo"
+    $env:Path += ";$env:CARGO_HOME\bin"
+}
+
 function Get-OSName {
     return (Get-CimInstance -ClassName Win32_OperatingSystem).Caption
 }
@@ -9,38 +15,40 @@ function Get-OSVersion {
 }
 
 function Get-BashVersion {
-    $version = bash -c 'echo ${BASH_VERSION}'
+    $version = bash --% -c 'echo ${BASH_VERSION}'
     return "Bash $version"
 }
 
 function Get-RustVersion {
+    Initialize-RustEnvironment
     $rustVersion = [regex]::matches($(rustc --version), "\d+\.\d+\.\d+").Value
     return $rustVersion
 }
 
 function Get-RustupVersion {
-     $version = [regex]::matches($(rustup --version), "\d+\.\d+\.\d+").Value
-     return $version
+    $rustupInfo = cmd /c "rustup --version 2>NUL"
+    $version = [regex]::matches($rustupInfo, "\d+\.\d+\.\d+").Value
+    return $version
 }
 
 function Get-RustCargoVersion {
-     $version = [regex]::matches($(cargo --version), "\d+\.\d+\.\d+").Value
-     return $version
+    $version = [regex]::matches($(cargo --version), "\d+\.\d+\.\d+").Value
+    return $version
 }
 
 function Get-RustdocVersion {
-     $version = [regex]::matches($(rustdoc --version), "\d+\.\d+\.\d+").Value
-     return $version
+    $version = [regex]::matches($(rustdoc --version), "\d+\.\d+\.\d+").Value
+    return $version
 }
 
 function Get-RustfmtVersion {
-     $version = [regex]::matches($(rustfmt --version), "\d+\.\d+\.\d+").Value
-     return $version
+    $version = [regex]::matches($(rustfmt --version), "\d+\.\d+\.\d+").Value
+    return $version
 }
 
 function Get-RustClippyVersion {
-     $version = [regex]::matches($(cargo clippy  --version), "\d+\.\d+\.\d+").Value
-     return $version
+    $version = [regex]::matches($(cargo clippy  --version), "\d+\.\d+\.\d+").Value
+    return $version
 }
 
 function Get-BindgenVersion {
@@ -78,6 +86,11 @@ function Get-GoVersion {
     return "Go $goVersion"
 }
 
+function Get-KotlinVersion {
+    $kotlinVersion = $((cmd /c "kotlinc  -version 2>&1") | Out-String).split(" ")[2]
+    return "Kotlin $kotlinVersion"
+}
+
 function Get-PHPVersion {
     ($(php --version) | Out-String) -match "PHP (?<version>\d+\.\d+\.\d+)" | Out-Null
     $phpVersion = $Matches.Version
@@ -87,6 +100,11 @@ function Get-PHPVersion {
 function Get-JuliaVersion {
     $juliaVersion = [regex]::matches($(julia --version), "\d+\.\d+\.\d+").Value
     return "Julia $juliaVersion"
+}
+
+function Get-LLVMVersion {
+    $llvmVersion = [regex]::matches($(clang --version), "\d+\.\d+\.\d+").Value
+    return "LLVM $llvmVersion"
 }
 
 function Get-PerlVersion {
@@ -101,16 +119,12 @@ function Get-NodeVersion {
 }
 
 function Get-ChocoVersion {
-    ($(choco version) | Out-String) -match "v(?<version>\d+\.\d+\.\d+)" | Out-Null
-    $chocoVersion = $Matches.Version
-    return "Chocolatey $chocoVersion"
+    return "Chocolatey $(choco --version)"
 }
 
 function Get-VcpkgVersion {
-    ($(vcpkg version) | Out-String) -match "version (?<version>\d+\.\d+\.\d+)" | Out-Null
-    $vcpkgVersion = $Matches.Version
     $commitId = git -C "C:\vcpkg" rev-parse --short HEAD
-    return "Vcpkg $vcpkgVersion (build from master \<$commitId>)"
+    return "Vcpkg (build from master \<$commitId>)"
 }
 
 function Get-NPMVersion {
@@ -186,6 +200,18 @@ function Get-DotnetSdks {
     }
 }
 
+function Get-DotnetTools {
+    $env:Path += ";C:\Users\Default\.dotnet\tools"
+    $dotnetTools = (Get-ToolsetContent).dotnet.tools
+
+    $toolsList = @()
+
+    foreach  ($dotnetTool in $dotnetTools) {
+        $toolsList += $dotnetTool.name + " " + (Invoke-Expression $dotnetTool.getversion)
+    }
+    return $toolsList
+}
+
 function Get-DotnetRuntimes {
     $runtimesRawList = dotnet --list-runtimes
     $runtimesRawList | Group-Object {$_.Split()[0]} | ForEach-Object {
@@ -230,7 +256,7 @@ function Get-PowerShellAzureModules {
     $modulesPath = "C:\Modules"
     $modules = Get-ChildItem -Path $modulesPath | Sort-Object Name |  Group-Object {$_.Name.Split('_')[0]}
     $modules | ForEach-Object {
-        $group = $_.group | Sort-Object {[Version]$_.Name.Split('_')[1]}
+        $group = $_.group | Sort-Object {[Version]$_.Name.Split('_')[1].Replace(".zip","")}
         $moduleName = $names[$_.Name]
         $moduleVersions = $group | ForEach-Object {$_.Name.Split('_')[1]}
         $moduleVersions = $moduleVersions -join '<br>'
@@ -271,6 +297,10 @@ function Get-CachedDockerImages {
 
 function Get-CachedDockerImagesTableData {
     $allImages = docker images --digests --format "*{{.Repository}}:{{.Tag}}|{{.Digest}} |{{.CreatedAt}}"
+    if (-not $allImages) {
+        return $null
+    }
+
     $allImages.Split("*") | Where-Object { $_ } | ForEach-Object {
         $parts = $_.Split("|")
         [PSCustomObject] @{
@@ -298,7 +328,7 @@ function Get-PacmanVersion {
     $rawVersion = & $pacmanPath --version
     $rawVersion.Split([System.Environment]::NewLine)[1] -match "\d+\.\d+(\.\d+)?" | Out-Null
     $pacmanVersion = $matches[0]
-    return "- Pacman $pacmanVersion"
+    return "Pacman $pacmanVersion"
 }
 
 function Get-YAMLLintVersion {
@@ -307,7 +337,7 @@ function Get-YAMLLintVersion {
 
 function Get-BizTalkVersion {
     $bizTalkReg = Get-ItemProperty "HKLM:\SOFTWARE\WOW6432Node\Microsoft\BizTalk Server\3.0"
-    return "- $($bizTalkReg.ProductName) $($bizTalkReg.ProductVersion) "
+    return "$($bizTalkReg.ProductName) $($bizTalkReg.ProductVersion)"
 }
 
 function Get-PipxVersion {
@@ -316,20 +346,24 @@ function Get-PipxVersion {
 }
 
 function Build-PackageManagementEnvironmentTable {
-    return @(
-        @{
-            "Name" = "CONDA"
-            "Value" = $env:CONDA
-        },
+    $envVariables = @(
         @{
             "Name" = "VCPKG_INSTALLATION_ROOT"
             "Value" = $env:VCPKG_INSTALLATION_ROOT
         }
-    ) | ForEach-Object {
+    )
+    if ((Test-IsWin16) -or (Test-IsWin19)) {
+        $envVariables += @(
+            @{
+                "Name" = "CONDA"
+                "Value" = $env:CONDA
+            }
+        )
+    }
+    return $envVariables | ForEach-Object {
         [PSCustomObject] @{
             "Name" = $_.Name
             "Value" = $_.Value
         }
     }
 }
-

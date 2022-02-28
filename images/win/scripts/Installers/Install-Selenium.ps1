@@ -3,31 +3,24 @@
 ##  Desc:  Install Selenium Server standalone
 ################################################################################
 
-# Acquire latest Selenium release number from GitHub API
-$latestReleaseUrl = "https://api.github.com/repos/SeleniumHQ/selenium/releases/latest"
-try {
-    $latestReleaseInfo = Invoke-RestMethod -Uri $latestReleaseUrl
-} catch {
-    Write-Error $_
-    exit 1
-}
-Write-Debug $latestReleaseInfo
-$seleniumVersionString = $latestReleaseInfo.name.Split(" ")[1]
-Write-Debug $seleniumVersionString
-$seleniumVersion = [version]::Parse($seleniumVersionString)
-
-# Download Selenium
-Write-Host "Downloading selenium-server-standalone v$seleniumVersion..."
-
-$seleniumReleaseUrl = "https://selenium-release.storage.googleapis.com/$($seleniumVersion.ToString(2))/selenium-server-standalone-$($seleniumVersion.ToString(3)).jar"
+# Create Selenium directory
 $seleniumDirectory = "C:\selenium\"
-$seleniumFileName = "selenium-server-standalone.jar"
-
 New-Item -ItemType directory -Path $seleniumDirectory
 
-Start-DownloadWithRetry -Url $seleniumReleaseUrl -Name $seleniumFileName -DownloadPath $seleniumDirectory
+# Download Selenium
+$seleniumMajorVersion = (Get-ToolsetContent).selenium.version
+$seleniumBinaryName = (Get-ToolsetContent).selenium.binary_name
+$seleniumFileName = "$seleniumBinaryName.jar"
+$json = Invoke-RestMethod -Uri "https://api.github.com/repos/SeleniumHQ/selenium/releases?per_page=100"
+$seleniumDownloadUrl = $json.Where{-not $_.prerelease}.assets.browser_download_url | Where-Object { $_ -like "*${seleniumBinaryName}-${seleniumMajorVersion}.*jar" } | Select-Object -First 1
 
-Write-Host "Add selenium jar to the environment variables..."
+Start-DownloadWithRetry -Url $seleniumDownloadUrl -Name $seleniumFileName -DownloadPath $seleniumDirectory
+
+# Create an epmty file to retrive selenium version
+$seleniumFullVersion = $seleniumDownloadUrl.Split("-")[1].Split("/")[0]
+New-Item -Path $seleniumDirectory -Name "$seleniumBinaryName-$seleniumFullVersion"
+
+# Add SELENIUM_JAR_PATH environment variable
 $seleniumBinPath = Join-Path $seleniumDirectory $seleniumFileName
 setx "SELENIUM_JAR_PATH" "$($seleniumBinPath)" /M
 

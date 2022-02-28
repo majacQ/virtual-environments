@@ -1,17 +1,5 @@
 Import-Module (Join-Path $PSScriptRoot "..\SoftwareReport\SoftwareReport.Common.psm1") -DisableNameChecking
 
-Describe "7-Zip" {
-    It "7z" {
-        "7z" | Should -ReturnZeroExitCode
-    }
-}
-
-Describe "AzCopy" {
-    It "AzCopy" {
-        "azcopy --version" | Should -ReturnZeroExitCode
-    }
-}
-
 Describe "Azure Cosmos DB Emulator" {
     $cosmosDbEmulatorRegKey = Get-ChildItem "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\*" | Get-ItemProperty | Where-Object { $_.DisplayName -eq 'Azure Cosmos DB Emulator' }
     $installDir = $cosmosDbEmulatorRegKey.InstallLocation
@@ -35,12 +23,6 @@ Describe "Bazel" {
     }
 }
 
-Describe "CMake" {
-    It "cmake" {
-        "cmake --version" | Should -ReturnZeroExitCode
-    }
-}
-
 Describe "CodeQLBundle" {
     It "CodeQLBundle" {
         $CodeQLVersionsWildcard = Join-Path $Env:AGENT_TOOLSDIRECTORY -ChildPath "codeql" | Join-Path -ChildPath "*"
@@ -59,32 +41,19 @@ Describe "R" {
 Describe "DACFx" {
     It "DACFx" {
         (Get-ItemProperty HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\*).DisplayName -Contains "Microsoft SQL Server Data-Tier Application Framework (x64)" | Should -BeTrue
-        $sqlPackagePath = 'C:\Program Files\Microsoft SQL Server\150\DAC\bin\SqlPackage.exe'
-        $sqlLocalDBPath = 'C:\Program Files\Microsoft SQL Server\130\Tools\Binn\SqlLocalDB.exe'
+        $sqlPackagePath = 'C:\Program Files\Microsoft SQL Server\160\DAC\bin\SqlPackage.exe'
         "${sqlPackagePath}" | Should -Exist
+    }
+
+    It "SqlLocalDB" -Skip:(Test-IsWin22) {
+        $sqlLocalDBPath = 'C:\Program Files\Microsoft SQL Server\130\Tools\Binn\SqlLocalDB.exe'
         "${sqlLocalDBPath}" | Should -Exist
     }
 }
 
-Describe "DotnetTLS" {
+Describe "DotnetTLS" -Skip:(Test-IsWin22) {
     It "Tls 1.2 is enabled" {
         [Net.ServicePointManager]::SecurityProtocol -band "Tls12" | Should -Be Tls12
-    }
-}
-
-Describe "Jq" {
-    It "Jq" {
-        "jq -n ." | Should -ReturnZeroExitCode
-    }
-}
-
-Describe "Julia" {
-    It "Julia path exists" {
-        "C:\Julia" | Should -Exist
-    }
-
-    It "Julia" {
-        "julia --version" | Should -ReturnZeroExitCode
     }
 }
 
@@ -122,13 +91,7 @@ Describe "Mingw64" {
     }
 }
 
-Describe "InnoSetup" {
-    It "InnoSetup" {
-        (Get-Command -Name iscc).CommandType | Should -BeExactly "Application"
-    }
-}
-
-Describe "GoogleCloudSDK"  {
+Describe "GoogleCloudSDK" -Skip:(Test-IsWin22) {
     It "<ToolName>" -TestCases @(
         @{ ToolName = "bq" }
         @{ ToolName = "gcloud" }
@@ -151,30 +114,6 @@ Describe "NSIS" {
     }
 }
 
-Describe "Nuget" {
-    It "Nuget" {
-       "nuget" | Should -ReturnZeroExitCode
-    }
-}
-
-Describe "OpenSSL" {
-    It "OpenSSL" {
-       "openssl version" | Should -ReturnZeroExitCode
-    }
-}
-
-Describe "Packer" {
-    It "Packer" {
-       "packer --version" | Should -ReturnZeroExitCode
-    }
-}
-
-Describe "Perl" {
-    It "Perl" {
-       "perl --version" | Should -ReturnZeroExitCode
-    }
-}
-
 Describe "PowerShell Core" {
     It "pwsh" {
         "pwsh --version" | Should -ReturnZeroExitCode
@@ -182,12 +121,6 @@ Describe "PowerShell Core" {
 
     It "Execute 2+2 command" {
         pwsh -Command "2+2" | Should -BeExactly 4
-    }
-}
-
-Describe "Pulumi" {
-    It "pulumi" {
-       "pulumi version" | Should -ReturnZeroExitCode
     }
 }
 
@@ -201,23 +134,15 @@ Describe "ServiceFabricSDK" {
     It "PowerShell Module" {
         Get-Module -Name ServiceFabric -ListAvailable | Should -Not -BeNullOrEmpty
     }
-}
 
-Describe "Svn" {
-    It "svn" {
-        "svn --version --quiet" | Should -ReturnZeroExitCode
+    It "ServiceFabricSDK version" {
+        Get-ItemPropertyValue 'HKLM:\SOFTWARE\Microsoft\Service Fabric\' -Name FabricVersion | Should -Not -BeNullOrEmpty
     }
 }
 
 Describe "Stack" {
     It "Stack" {
         "stack --version" | Should -ReturnZeroExitCode
-    }
-}
-
-Describe "Typescript" {
-    It "tsc" {
-        "tsc --version" | Should -ReturnZeroExitCode
     }
 }
 
@@ -235,9 +160,19 @@ Describe "Vcpkg" {
     }
 }
 
-Describe "VSWhere" {
-    It "vswhere" {
-        "vswhere" | Should -ReturnZeroExitCode
+Describe "VCRedist" -Skip:(Test-IsWin22) {
+    It "vcredist_140" -Skip:(Test-IsWin19) {
+        "C:\Windows\System32\vcruntime140.dll" | Should -Exist
+    }
+
+    It "vcredist_2010_x64" -Skip:(Test-IsWin16) {
+        "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\{1D8E6291-B0D5-35EC-8441-6616F567A0F7}" | Should -Exist
+        "C:\Windows\System32\msvcr100.dll" | Should -Exist
+    }
+
+    It "vcredist_2010_x64" -Skip:(Test-IsWin16) {
+        "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\{1D8E6291-B0D5-35EC-8441-6616F567A0F7}" | Should -Exist
+        "C:\Windows\System32\msvcr100.dll" | Should -Exist
     }
 }
 
@@ -259,8 +194,16 @@ Describe "Pipx" {
     }
 }
 
-Describe "Swig" {
-    It "Swig" {
-        "swig -version" | Should -ReturnZeroExitCode
+Describe "Kotlin" {
+    $kotlinPackages =  @("kapt", "kotlin", "kotlinc", "kotlin-dce-js", "kotlinc-js", "kotlinc-jvm")
+
+    It "<toolName> is available" -TestCases ($kotlinPackages | ForEach-Object { @{ toolName = $_ } })  {
+        "$toolName -version" | Should -ReturnZeroExitCode
+    }
+}
+
+Describe "SQL OLEDB Driver" -Skip:(Test-IsWin16) {
+    It "SQL OLEDB Driver" {
+        "HKLM:\SOFTWARE\Microsoft\MSOLEDBSQL" | Should -Exist
     }
 }

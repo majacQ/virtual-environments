@@ -10,28 +10,41 @@ download_with_retries() {
     local COMPRESSED="$4"
 
     if [[ $COMPRESSED == "compressed" ]]; then
-        COMMAND="curl $URL -4 -sL --compressed -o '$DEST/$NAME'"
+        local COMMAND="curl $URL -4 -sL --compressed -o '$DEST/$NAME' -w '%{http_code}'"
     else
-        COMMAND="curl $URL -4 -sL -o '$DEST/$NAME'"
+        local COMMAND="curl $URL -4 -sL -o '$DEST/$NAME' -w '%{http_code}'"
     fi
 
-    echo "Downloading $URL..."
+    echo "Downloading '$URL' to '${DEST}/${NAME}'..."
     retries=20
     interval=30
     while [ $retries -gt 0 ]; do
         ((retries--))
-        eval $COMMAND
-        if [ $? != 0 ]; then
-            echo "Unable to download $URL, next attempt in $interval sec, $retries attempts left"
-            sleep $interval
-        else
-            echo "$URL was downloaded successfully to $DEST/$NAME"
+        # Temporary disable exit on error to retry on non-zero exit code
+        set +e
+        http_code=$(eval $COMMAND)
+        exit_code=$?
+        if [ $http_code -eq 200 ] && [ $exit_code -eq 0 ]; then
+            echo "Download completed"
             return 0
+        else
+            echo "Error — Either HTTP response code for '$URL' is wrong - '$http_code' or exit code is not 0 - '$exit_code'. Waiting $interval seconds before the next attempt, $retries attempts left"
+            sleep 30
         fi
+        # Enable exit on error back
+        set -e
     done
 
     echo "Could not download $URL"
     return 1
+}
+
+is_Monterey() {
+    if [ "$OSTYPE" = "darwin21" ]; then
+        true
+    else
+        false
+    fi
 }
 
 is_BigSur() {
@@ -50,32 +63,16 @@ is_Catalina() {
     fi
 }
 
-is_Mojave() {
-    if [ "$OSTYPE" = "darwin18" ]; then
+is_Less_Monterey() {
+    if is_Catalina || is_BigSur; then
         true
     else
         false
     fi
 }
 
-is_HighSierra() {
-    if [ "$OSTYPE" = "darwin17" ]; then
-        true
-    else
-        false
-    fi
-}
-
-is_Less_Catalina() {
-    if is_HighSierra || is_Mojave; then
-        true
-    else
-        false
-    fi
-}
-
-is_Less_BigSur() {
-    if is_HighSierra || is_Mojave || is_Catalina; then
+is_Veertu() {
+    if [ -d "/Library/Application Support/Veertu" ]; then
         true
     else
         false
@@ -111,14 +108,12 @@ brew_cask_install_ignoring_sha256() {
 }
 
 get_brew_os_keyword() {
-    if is_HighSierra; then
-        echo "high_sierra"
-    elif is_Mojave; then
-        echo "mojave"
-    elif is_Catalina; then
+    if is_Catalina; then
         echo "catalina"
     elif is_BigSur; then
         echo "big_sur"
+    elif is_Monterey; then
+        echo "monterey"
     else
         echo "null"
     fi
@@ -167,4 +162,47 @@ brew_smart_install() {
         echo "Downloading $tool_name..."
         brew install $tool_name
     fi
+}
+
+configure_system_tccdb () {
+    local values=$1
+
+    local dbPath="/Library/Application Support/com.apple.TCC/TCC.db"
+    local sqlQuery="INSERT OR IGNORE INTO access VALUES($values);"
+    sudo sqlite3 "$dbPath" "$sqlQuery"
+}
+
+configure_user_tccdb () {
+    local values=$1
+
+    local dbPath="$HOME/Library/Application Support/com.apple.TCC/TCC.db"
+    local sqlQuery="INSERT OR IGNORE INTO access VALUES($values);"
+    sqlite3 "$dbPath" "$sqlQuery"
+}
+
+get_github_package_download_url() {
+    local REPO_ORG=$1
+    local FILTER=$2
+    local VERSION=$3
+    local API_PAT=$4
+    local SEARCH_IN_COUNT="100"
+
+    [ -n "$API_PAT" ] && authString=(-H "Authorization: token ${API_PAT}")
+
+    json=$(curl "${authString[@]}" -s "https://api.github.com/repos/${REPO_ORG}/releases?per_page=${SEARCH_IN_COUNT}")
+
+    if [[ "$VERSION" == "latest" ]]; then
+        tagName=$(echo $json | jq -r '.[] | select(.prerelease==false).tag_name' | sort --unique --version-sort | egrep -v ".*-[a-z]" | tail -1)
+    else
+        tagName=$(echo $json | jq -r '.[] | select(.prerelease==false).tag_name' | sort --unique --version-sort | egrep -v ".*-[a-z]" | egrep "\w*${VERSION}" | tail -1)
+    fi
+
+    downloadUrl=$(echo $json | jq -r ".[] | select(.tag_name==\"${tagName}\").assets[].browser_download_url | select(${FILTER})" | head -n 1)
+
+    echo $downloadUrl
+}
+
+# Close all finder windows because they can interfere with UI tests
+close_finder_window() {
+    osascript -e 'tell application "Finder" to close windows'
 }

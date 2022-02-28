@@ -10,7 +10,10 @@ $CachePath = 'C:\npm\cache'
 New-Item -Path $PrefixPath -Force -ItemType Directory
 New-Item -Path $CachePath -Force -ItemType Directory
 
-Choco-Install -PackageName nodejs-lts -ArgumentList "--force"
+$defaultVersion = (Get-ToolsetContent).node.default
+$versionToInstall = Get-LatestChocoPackageVersion -TargetVersion $defaultVersion -PackageName "nodejs"
+
+Choco-Install -PackageName nodejs -ArgumentList "--version=$versionToInstall"
 
 Add-MachinePathItem $PrefixPath
 $env:Path = Get-MachinePath
@@ -21,14 +24,9 @@ $env:npm_config_prefix = $PrefixPath
 npm config set cache $CachePath --global
 npm config set registry https://registry.npmjs.org/
 
-npm install -g cordova
-npm install -g grunt-cli
-npm install -g gulp-cli
-npm install -g parcel-bundler
-npm install -g --save-dev webpack webpack-cli
-npm install -g yarn
-npm install -g lerna
-npm install -g node-sass
-npm install -g newman
+$globalNpmPackages = (Get-ToolsetContent).npm.global_packages
+$globalNpmPackages | ForEach-Object {
+    npm install -g $_.name
+}
 
 Invoke-PesterTests -TestFile "Node"

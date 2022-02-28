@@ -151,11 +151,6 @@ function Build-OSInfoSection {
     return $output
 }
 
-function Get-PHPVersion {
-    $PHPVersion = Run-Command "php --version" | Select-Object -First 1 | Take-Part -Part 0,1
-    return $PHPVersion
-}
-
 function Get-MSBuildVersion {
     $msbuildVersion = msbuild -version | Select-Object -Last 1
     $result = Select-String -Path (Get-Command msbuild).Source -Pattern "msbuild"
@@ -271,8 +266,8 @@ function Get-CurlVersion {
 }
 
 function Get-GitVersion {
-    $gitVersion = Run-Command "git --version" | Take-Part -Part 2
-    return "Git: $gitVersion"
+    $gitVersion = Run-Command "git --version" | Take-Part -Part -1
+    return "Git $gitVersion"
 }
 
 function Get-GitLFSVersion {
@@ -308,7 +303,7 @@ function Get-PackerVersion {
 }
 
 function Get-OpenSSLVersion {
-    $opensslVersion = Get-Item /usr/local/opt/openssl | ForEach-Object {"{0} ``({1} -> {2})``" -f (Run-Command "openssl version"), $_.FullName, $_.Target}
+    $opensslVersion = Get-Item /usr/local/opt/openssl@1.1 | ForEach-Object {"{0} ``({1} -> {2})``" -f (Run-Command "openssl version"), $_.FullName, $_.Target}
     return $opensslVersion
 }
 
@@ -423,8 +418,13 @@ function Get-AppCenterCLIVersion {
 }
 
 function Get-AzureCLIVersion {
-    $azureCLIVersion = Run-Command "az -v" | Select-String "^azure-cli" | Take-Part -Part 1
+    $azureCLIVersion = (az version | ConvertFrom-Json).'azure-cli'
     return "Azure CLI $azureCLIVersion"
+}
+
+function Get-AzureDevopsVersion {
+    $azdevopsVersion = (az version | ConvertFrom-Json).extensions.'azure-devops'
+    return "Azure CLI (azure-devops) $azdevopsVersion"
 }
 
 function Get-AWSCLIVersion {
@@ -502,6 +502,46 @@ function Get-SwigVersion {
     return "Swig $swigVersion"
 }
 
+function Get-BicepVersion {
+    $bicepVersion = Run-Command "bicep --version" | Take-Part -Part 3
+    return "Bicep CLI $bicepVersion"
+}
+
+function Get-KotlinVersion {
+    $kotlinVersion = Run-Command "kotlin -version" | Take-Part -Part 2
+    return "Kotlin $kotlinVersion"
+}
+
+function Get-SbtVersion {
+    $sbtVersion = Run-Command "sbt -version" | Take-Part -Part 3
+    return "Sbt $sbtVersion"
+}
+
+function Get-JazzyVersion {
+    $jazzyVersion = Run-Command "jazzy --version" | Take-Part -Part 2
+    return "Jazzy $jazzyVersion"
+}
+
+function Get-ZlibVersion {
+	$zlibVersion = (brew info zlib)[0] | Take-Part -Part 2
+	return "Zlib $zlibVersion"
+}
+
+function Get-LibXftVersion {
+    $libXftVersion = (brew info libxft)[0] | Take-Part -Part 2
+    return "libXft $libXftVersion"
+}
+
+function Get-LibXextVersion {
+    $libXextVersion = (brew info libxext)[0] | Take-Part -Part 2
+    return "libXext $libXextVersion"
+}
+
+function Get-TclTkVersion {
+    $tcltkVersion = (brew info tcl-tk)[0] | Take-Part -Part 2
+    return "Tcl/Tk $tcltkVersion"
+}
+
 function Build-PackageManagementEnvironmentTable {
     return @(
         @{
@@ -517,5 +557,20 @@ function Build-PackageManagementEnvironmentTable {
             "Name" = $_.Name
             "Value" = $_.Value
         }
+    }
+}
+
+function Get-GraalVMVersion {
+    $version = & "$env:GRAALVM_11_ROOT\java" --version | Select-String -Pattern "GraalVM" | Take-Part -Part 5,6
+    return $version
+}
+
+function Build-GraalVMTable {
+    $version = Get-GraalVMVersion
+    $envVariables = "GRAALVM_11_ROOT"
+
+    return [PSCustomObject] @{
+        "Version" = $version
+        "Environment variables" = $envVariables
     }
 }
